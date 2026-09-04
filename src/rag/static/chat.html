@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Policy Answers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --paper:#f6f7f9; --surface:#fff; --surface-2:#eef0f4; --surface-3:#e4e8ef;
+    --ink:#14181f; --ink-2:#3d4553; --slate:#626b7c;
+    --rule:#dde1e8; --rule-2:#c9cfda;
+    --indigo:#2a3a86; --indigo-bg:#e8ebf6; --on-accent:#ffffff;
+    --teal:#0f6b60; --teal-bg:#e2efec;
+    --amber:#8f6410; --amber-bg:#f6eedd;
+    --crimson:#93283a; --crimson-bg:#f7e6e9;
+    --shadow:0 1px 2px rgba(20,24,31,.05), 0 8px 24px -18px rgba(20,24,31,.22);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:#101318; --surface:#171b22; --surface-2:#1e232c; --surface-3:#262c37;
+      --ink:#e9ecf1; --ink-2:#bfc6d2; --slate:#8f98a8;
+      --rule:#272d38; --rule-2:#38414f;
+      --indigo:#9fb0f0; --indigo-bg:#1b2143; --on-accent:#101318;
+      --teal:#6ec9ba; --teal-bg:#112d29;
+      --amber:#d9ab5b; --amber-bg:#2c2313;
+      --crimson:#e8949f; --crimson-bg:#33161c;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -18px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#101318; --surface:#171b22; --surface-2:#1e232c; --surface-3:#262c37;
+    --ink:#e9ecf1; --ink-2:#bfc6d2; --slate:#8f98a8;
+    --rule:#272d38; --rule-2:#38414f;
+    --indigo:#9fb0f0; --indigo-bg:#1b2143; --on-accent:#101318;
+    --teal:#6ec9ba; --teal-bg:#112d29;
+    --amber:#d9ab5b; --amber-bg:#2c2313;
+    --crimson:#e8949f; --crimson-bg:#33161c;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -18px rgba(0,0,0,.7);
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+    font-size:15px; line-height:1.6; -webkit-font-smoothing:antialiased;
+    display:flex; flex-direction:column;
+  }
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+
+  /* ---------- top bar ---------- */
+  header{
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+    padding:12px 20px; background:var(--surface);
+    border-bottom:1px solid var(--rule-2); box-shadow:var(--shadow);
+    position:sticky; top:0; z-index:20;
+  }
+  .brand{font-weight:600; font-size:15px; letter-spacing:-.01em; white-space:nowrap}
+  .brand small{
+    display:block; font-family:"IBM Plex Mono",monospace; font-size:10px;
+    letter-spacing:.12em; text-transform:uppercase; color:var(--slate);
+    font-weight:400;
+  }
+  .spacer{flex:1}
+  .status{
+    display:flex; align-items:center; gap:7px;
+    font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--slate);
+    white-space:nowrap;
+  }
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--slate);flex:0 0 auto}
+  .dot.ok{background:var(--teal)} .dot.warn{background:var(--amber)}
+  .dot.bad{background:var(--crimson)}
+
+  button,select,input,textarea{font:inherit;color:inherit}
+  .btn{
+    background:var(--surface-2); border:1px solid var(--rule-2); color:var(--ink);
+    padding:6px 12px; border-radius:5px; cursor:pointer; font-size:13px;
+    transition:background .12s;
+  }
+  .btn:hover{background:var(--surface-3)}
+  .btn.primary{background:var(--indigo); border-color:var(--indigo); color:var(--on-accent)}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn:disabled{opacity:.5; cursor:not-allowed}
+  .btn:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{
+    outline:2px solid var(--indigo); outline-offset:2px;
+  }
+
+  /* ---------- layout ---------- */
+  main{flex:1; display:grid; grid-template-columns:minmax(0,1fr) 380px; min-height:0}
+  @media (max-width:1000px){ main{grid-template-columns:minmax(0,1fr)} aside{display:none} }
+
+  .chat{display:flex; flex-direction:column; min-height:0; min-width:0}
+  .transcript{flex:1; overflow-y:auto; padding:24px 20px 8px}
+  .inner{max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:18px}
+
+  /* ---------- controls ---------- */
+  .controls{
+    max-width:760px; margin:0 auto; width:100%;
+    display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+    padding:0 0 10px;
+  }
+  .seg{display:flex; border:1px solid var(--rule-2); border-radius:5px; overflow:hidden}
+  .seg button{
+    background:var(--surface); border:0; padding:6px 13px; cursor:pointer;
+    font-size:13px; color:var(--slate);
+  }
+  .seg button[aria-pressed="true"]{background:var(--indigo); color:var(--on-accent)}
+  select,input[type=text]{
+    background:var(--surface); border:1px solid var(--rule-2);
+    border-radius:5px; padding:6px 9px; font-size:13px; max-width:100%;
+  }
+  select{min-width:200px}
+  label.lbl{
+    font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--slate);
+  }
+
+  /* ---------- composer ---------- */
+  .composer{
+    border-top:1px solid var(--rule-2); background:var(--surface);
+    padding:12px 20px 14px;
+  }
+  .composer-inner{max-width:760px; margin:0 auto}
+  .field{display:flex; gap:8px; align-items:flex-end}
+  textarea{
+    flex:1; resize:none; background:var(--paper);
+    border:1px solid var(--rule-2); border-radius:6px;
+    padding:10px 12px; min-height:44px; max-height:180px; line-height:1.5;
+  }
+  .hint{
+    font-size:11px; color:var(--slate); margin-top:7px;
+    font-family:"IBM Plex Mono",monospace;
+  }
+
+  /* ---------- messages ---------- */
+  .msg{display:flex; flex-direction:column; gap:8px}
+  .who{
+    font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--slate);
+  }
+  .bubble{
+    background:var(--surface); border:1px solid var(--rule);
+    border-radius:8px; padding:14px 16px; box-shadow:var(--shadow);
+    white-space:pre-wrap; word-wrap:break-word;
+  }
+  .msg.me .bubble{background:var(--indigo-bg); border-color:var(--rule-2)}
+  .msg.err .bubble{background:var(--crimson-bg); border-color:var(--crimson)}
+  .msg.sys .bubble{background:var(--amber-bg); border-color:var(--amber); font-size:13.5px}
+
+  .badges{display:flex; gap:6px; flex-wrap:wrap; align-items:center}
+  .badge{
+    font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.07em;
+    text-transform:uppercase; padding:2px 7px; border-radius:3px;
+    border:1px solid currentColor; white-space:nowrap;
+  }
+  .badge.good{color:var(--teal); background:var(--teal-bg)}
+  .badge.bad{color:var(--crimson); background:var(--crimson-bg)}
+  .badge.warn{color:var(--amber); background:var(--amber-bg)}
+  .badge.info{color:var(--slate)}
+
+  /* ---------- evidence ---------- */
+  details.ev{
+    border:1px solid var(--rule-2); border-radius:6px;
+    background:var(--surface); overflow:hidden;
+  }
+  details.ev>summary{
+    cursor:pointer; padding:9px 13px; font-size:12.5px; background:var(--surface-2);
+    list-style:none; display:flex; align-items:center; gap:8px;
+  }
+  details.ev>summary::-webkit-details-marker{display:none}
+  details.ev>summary::before{content:"▸"; color:var(--slate); font-size:10px}
+  details.ev[open]>summary::before{content:"▾"}
+  .cite{padding:11px 13px; border-top:1px solid var(--rule)}
+  .cite-src{
+    font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--indigo);
+    margin-bottom:5px; display:flex; gap:7px; align-items:baseline; flex-wrap:wrap;
+  }
+  .cite-q{
+    font-size:13px; color:var(--ink-2); border-left:2px solid var(--rule-2);
+    padding-left:10px; font-style:italic;
+  }
+  .pg{
+    font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--teal);
+    border:1px solid currentColor; padding:0 4px; border-radius:2px;
+  }
+
+  /* ---------- side panel ---------- */
+  aside{
+    border-left:1px solid var(--rule-2); background:var(--surface);
+    overflow-y:auto; padding:18px; min-width:0;
+  }
+  aside h2{
+    font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.13em;
+    text-transform:uppercase; color:var(--slate); margin:0 0 10px;
+    padding-bottom:6px; border-bottom:1px solid var(--rule);
+  }
+  aside section{margin-bottom:22px}
+  .kv{display:grid; grid-template-columns:1fr auto; gap:3px 10px; font-size:12.5px}
+  .kv dt{color:var(--slate); min-width:0; overflow-wrap:anywhere}
+  .kv dd{
+    margin:0; font-family:"IBM Plex Mono",monospace; text-align:right;
+    font-variant-numeric:tabular-nums; white-space:nowrap;
+  }
+  .kv dd.alert{color:var(--crimson)}
+  .kv dd.good{color:var(--teal)}
+  .plist{font-size:12px; color:var(--ink-2)}
+  .plist div{padding:3px 0; border-bottom:1px dotted var(--rule); overflow-wrap:anywhere}
+  .empty{font-size:12.5px; color:var(--slate); font-style:italic}
+  .caveat{
+    font-size:11.5px; color:var(--slate); line-height:1.5;
+    border-top:1px solid var(--rule); padding-top:11px;
+  }
+  .flags{display:flex; flex-wrap:wrap; gap:5px}
+  .flag{
+    font-family:"IBM Plex Mono",monospace; font-size:10.5px;
+    border:1px solid var(--rule-2); border-radius:3px; padding:3px 6px;
+    cursor:pointer; background:var(--surface-2); color:var(--slate);
+  }
+  .flag[aria-pressed="true"]{
+    background:var(--teal-bg); border-color:var(--teal); color:var(--teal);
+  }
+
+  .spin{
+    display:inline-block; width:11px; height:11px; border-radius:50%;
+    border:2px solid var(--rule-2); border-top-color:var(--indigo);
+    animation:sp .7s linear infinite; vertical-align:-1px;
+  }
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){ .spin{animation:none} *{transition:none!important} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Policy Answers<small>grounded policy Q&amp;A</small></div>
+  <div class="spacer"></div>
+  <div class="status" id="status"><span class="dot" id="dot"></span><span id="statusText">connecting…</span></div>
+  <button class="btn" id="themeBtn" title="Toggle theme">◐</button>
+</header>
+
+<main>
+  <div class="chat">
+    <div class="transcript" id="transcript">
+      <div class="inner" id="inner"></div>
+    </div>
+
+    <div class="composer">
+      <div class="composer-inner">
+        <div class="controls">
+          <div class="seg" role="group" aria-label="Question scope">
+            <button id="modePlan"  aria-pressed="true">This plan</button>
+            <button id="modeBroad" aria-pressed="false">All plans</button>
+          </div>
+          <span id="planWrap">
+            <label class="lbl" for="planSel">Plan</label>
+            <select id="planSel"><option value="">loading…</option></select>
+          </span>
+          <span id="insWrap" hidden>
+            <label class="lbl" for="insSel">Insurer</label>
+            <select id="insSel"><option value="">any</option></select>
+          </span>
+        </div>
+        <div class="field">
+          <textarea id="q" rows="1" placeholder="e.g. I need a knee replacement — am I covered, and what will I actually be paid?"></textarea>
+          <button class="btn primary" id="send">Ask</button>
+        </div>
+        <div class="hint" id="hint">Enter to send · Shift+Enter for a new line</div>
+      </div>
+    </div>
+  </div>
+
+  <aside>
+    <section>
+      <h2>Last answer</h2>
+      <dl class="kv" id="trace"><dt class="empty">No question asked yet.</dt><dd></dd></dl>
+    </section>
+    <section id="planSec" hidden>
+      <h2>Documents read</h2>
+      <div class="plist" id="plans"></div>
+    </section>
+    <section>
+      <h2>Filter plans by benefit</h2>
+      <div class="flags" id="flags"></div>
+      <button class="btn" id="runFlags" style="margin-top:9px">Find matching plans</button>
+    </section>
+    <section>
+      <div class="caveat" id="caveat">
+        Answers describe only what the stored policy wordings say. They are not
+        advice on which policy to buy, and the corpus may lag the currently
+        issued wording.
+      </div>
+    </section>
+  </aside>
+</main>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const el = (tag, cls, txt) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (txt != null) n.textContent = txt;   // textContent everywhere: never innerHTML
+    return n;
+  };
+
+  let mode = "plan";
+  let busy = false;
+  let plans = [];
+
+  /* ---------- theme ---------- */
+  $("themeBtn").onclick = () => {
+    const cur = document.documentElement.getAttribute("data-theme");
+    const next = cur === "dark" ? "light" : cur === "light" ? null : "dark";
+    if (next) document.documentElement.setAttribute("data-theme", next);
+    else document.documentElement.removeAttribute("data-theme");
+  };
+
+  /* ---------- errors ---------- */
+  const FIELD_NAMES = { question:"question", plan_name:"plan", insurer:"insurer", flags:"benefits" };
+
+  function humanError(status, detail) {
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail)) {
+      // FastAPI validation errors: [{type, loc:[...], msg, ctx}]
+      return detail.map(e => {
+        const field = FIELD_NAMES[(e.loc || []).slice(-1)[0]] || (e.loc || []).slice(-1)[0] || "input";
+        if (e.type === "string_too_short") {
+          const n = e.ctx?.min_length;
+          return `The ${field} is too short — it needs at least ${n} characters.`;
+        }
+        if (e.type === "string_too_long")
+          return `The ${field} is too long — the maximum is ${e.ctx?.max_length} characters.`;
+        if (e.type === "missing") return `The ${field} is required.`;
+        return `${field}: ${e.msg || "invalid"}`;
+      }).join(" ");
+    }
+    return `Request failed with status ${status}.`;
+  }
+
+  /* ---------- transcript ---------- */
+  function push(kind, who, body) {
+    const wrap = el("div", "msg " + kind);
+    wrap.appendChild(el("div", "who", who));
+    if (typeof body === "string") wrap.appendChild(el("div", "bubble", body));
+    else wrap.appendChild(body);
+    $("inner").appendChild(wrap);
+    $("transcript").scrollTop = $("transcript").scrollHeight;
+    return wrap;
+  }
+
+  /* ---------- health ---------- */
+  async function health() {
+    try {
+      const r = await fetch("/health");
+      const h = await r.json();
+      const sections = h.qdrant?.checks?.sections?.points ?? "?";
+      const ready = h.answers_enabled;
+      $("dot").className = "dot " + (ready ? "ok" : "warn");
+      $("statusText").textContent =
+        `${h.answer_provider} · answers ${ready ? "ready" : "no key"} · ${sections} sections`;
+      if (!ready) {
+        push("sys", "Service",
+          `The retrieval layer is live but no answer-model key is configured, so ` +
+          `asking a question will return 503. Set the key for the "${h.answer_provider}" ` +
+          `provider in .env and restart. Benefit filtering below works regardless.`);
+      }
+    } catch (e) {
+      $("dot").className = "dot bad";
+      $("statusText").textContent = "service unreachable";
+      push("err", "Error", "Cannot reach the API. Is uvicorn running?");
+    }
+  }
+
+  /* ---------- plans ---------- */
+  async function loadPlans() {
+    try {
+      const r = await fetch("/plans");
+      const d = await r.json();
+      plans = d.plans || [];
+      const sel = $("planSel");
+      sel.textContent = "";
+      plans.forEach(p => {
+        const o = el("option", null, `${p.plan_name} — ${p.insurer}`);
+        o.value = p.plan_name;
+        o.dataset.insurer = p.insurer;
+        sel.appendChild(o);
+      });
+      const ins = $("insSel");
+      [...new Set(plans.map(p => p.insurer))].sort().forEach(i => {
+        const o = el("option", null, i); o.value = i; ins.appendChild(o);
+      });
+      $("statusText").textContent += ` · ${plans.length} plans`;
+    } catch (e) {
+      $("planSel").textContent = "";
+      $("planSel").appendChild(el("option", null, "failed to load"));
+    }
+  }
+
+  /* ---------- rendering an answer ---------- */
+  function renderAnswer(d) {
+    const box = document.createElement("div");
+
+    const badges = el("div", "badges");
+    badges.appendChild(el("span", "badge " + (d.grounded ? "good" : "bad"),
+      d.grounded ? `grounded · ${d.citations.length} citations` : "ungrounded"));
+    if (d.unverified_quotes > 0)
+      badges.appendChild(el("span", "badge bad",
+        `${d.unverified_quotes} quotes failed verification`));
+    badges.appendChild(el("span", "badge info", d.model));
+    box.appendChild(badges);
+
+    box.appendChild(el("div", "bubble", d.answer));
+
+    if (!d.grounded) {
+      const warn = el("div", "bubble",
+        "No claim in this answer carried a citation, so nothing above is " +
+        "traceable to a policy document. Treat it as unverified.");
+      warn.style.background = "var(--crimson-bg)";
+      warn.style.borderColor = "var(--crimson)";
+      warn.style.fontSize = "13px";
+      box.appendChild(warn);
+    }
+
+    if (d.citations?.length) {
+      const ev = el("details", "ev");
+      const sum = el("summary");
+      sum.appendChild(el("span", null, `Evidence — ${d.citations.length} quoted passages`));
+      ev.appendChild(sum);
+      d.citations.forEach(c => {
+        const row = el("div", "cite");
+        const src = el("div", "cite-src");
+        src.appendChild(el("span", null, c.source));
+        if (c.page != null) src.appendChild(el("span", "pg", "page " + c.page));
+        row.appendChild(src);
+        row.appendChild(el("div", "cite-q", "“" + c.quoted_text.trim() + "”"));
+        ev.appendChild(row);
+      });
+      box.appendChild(ev);
+    }
+    return box;
+  }
+
+  function renderTrace(d) {
+    const t = d.trace, u = d.usage, dl = $("trace");
+    dl.textContent = "";
+    const add = (k, v, cls) => {
+      dl.appendChild(el("dt", null, k));
+      dl.appendChild(el("dd", cls || null, String(v)));
+    };
+    add("Mode", t.mode);
+    add("Provider", d.provider);
+    add("Grounded", d.grounded ? "yes" : "no", d.grounded ? "good" : "alert");
+    add("Citations", d.citations.length);
+    if (d.unverified_quotes > 0) add("Unverified quotes", d.unverified_quotes, "alert");
+    add("Sections used", t.sections_used.length);
+    if (t.top_score) add("Top score", t.top_score.toFixed(4));
+    if (t.dropped_group) add("Dropped: group", t.dropped_group);
+    if (t.dropped_withdrawn) add("Dropped: withdrawn", t.dropped_withdrawn);
+    if (t.dropped_standard) add("Dropped: standard", t.dropped_standard);
+    if (t.dropped_low_score) add("Dropped: low score", t.dropped_low_score);
+    add("Retrieval", t.retrieval_ms + " ms");
+    add("Answer", t.answer_ms + " ms");
+    add("Tokens in / out", `${u.input_tokens} / ${u.output_tokens}`);
+    if (u.cache_read_tokens) add("Cache read", u.cache_read_tokens, "good");
+
+    const ps = $("plans");
+    ps.textContent = "";
+    (t.plans_considered || []).forEach(p => ps.appendChild(el("div", null, p)));
+    if (t.document_read) ps.appendChild(el("div", null, "PDF: " + t.document_read));
+    (t.alternative_documents || []).forEach(a =>
+      ps.appendChild(el("div", null, "ignored: " + a)));
+    $("planSec").hidden = !(t.plans_considered || []).length;
+    if (d.caveat) $("caveat").textContent = d.caveat;
+  }
+
+  /* ---------- ask ---------- */
+  async function ask() {
+    if (busy) return;
+    const q = $("q").value.trim();
+    if (!q) return;
+    if (q.length < 3) {
+      push("me", "You", q);
+      $("q").value = ""; sizeBox();
+      push("sys", "Ask something specific",
+        "That is too short to answer. Name the thing you want to know and, "
+        + "for a single plan, pick it from the dropdown. For example:
+
+"
+        + "  · What is the maternity waiting period?
+"
+        + "  · I need a knee replacement — am I covered, and what reduces the payout?
+"
+        + "  · Does this policy cover AYUSH treatment, and is there a sub-limit?
+"
+        + "  · What is excluded in the first 30 days?");
+      return;
+    }
+    const plan = $("planSel").value;
+    if (mode === "plan" && (!plan || plan.length < 2)) {
+      push("err", "Pick a plan", "Choose a plan from the dropdown, or switch to “All plans”.");
+      return;
+    }
+
+    push("me", "You", q);
+    $("q").value = ""; sizeBox();
+    busy = true; $("send").disabled = true;
+
+    const pending = el("div", "bubble");
+    pending.appendChild(el("span", "spin"));
+    pending.appendChild(el("span", null, mode === "plan"
+      ? "  Reading the full policy…" : "  Searching, then reading candidates in full…"));
+    const holder = push("bot", "Policy Answers", pending);
+
+    try {
+      const url = mode === "plan" ? "/plan/ask" : "/ask";
+      const body = mode === "plan"
+        ? { question: q, plan_name: plan, insurer: $("insSel").value || null }
+        : { question: q };
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      holder.remove();
+
+      if (!r.ok) {
+        const detail = humanError(r.status, d.detail);
+        push("err", `Error ${r.status}`, detail);
+        // A 404 on a shared plan name means "tell me which insurer".
+        if (r.status === 404 && /more than one insurer/i.test(detail)) {
+          $("insWrap").hidden = false;
+          push("sys", "Next step",
+            "That plan name is used by several insurers. Choose one in the " +
+            "Insurer dropdown and ask again — answering from an arbitrary " +
+            "insurer's wording would be a silent wrong answer.");
+        }
+        return;
+      }
+      push("bot", "Policy Answers", renderAnswer(d));
+      renderTrace(d);
+    } catch (e) {
+      holder.remove();
+      push("err", "Error", String(e));
+    } finally {
+      busy = false; $("send").disabled = false; $("q").focus();
+    }
+  }
+
+  /* ---------- benefit filter ---------- */
+  const FLAGS = [
+    "has_maternity_cover", "has_opd_cover", "has_ayush_cover",
+    "has_daycare_cover", "has_restoration", "has_no_claim_bonus",
+    "has_room_rent_limit", "has_copay", "has_organ_donor_cover",
+    "has_teleconsultation", "has_health_checkup", "has_domiciliary_cover",
+  ];
+  const picked = new Set();
+  FLAGS.forEach(f => {
+    const b = el("button", "flag", f.replace("has_", "").replace(/_/g, " "));
+    b.setAttribute("aria-pressed", "false");
+    b.onclick = () => {
+      const on = b.getAttribute("aria-pressed") === "true";
+      b.setAttribute("aria-pressed", String(!on));
+      on ? picked.delete(f) : picked.add(f);
+    };
+    $("flags").appendChild(b);
+  });
+
+  $("runFlags").onclick = async () => {
+    if (!picked.size) {
+      push("sys", "Filter", "Select at least one benefit first.");
+      return;
+    }
+    const flags = [...picked];
+    push("me", "You", "Which plans have: " + flags.join(", ") + "?");
+    try {
+      const r = await fetch("/plans/by-feature", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ flags }),
+      });
+      const d = await r.json();
+      if (!r.ok) { push("err", `Error ${r.status}`, humanError(r.status, d.detail)); return; }
+      const box = document.createElement("div");
+      const badges = el("div", "badges");
+      badges.appendChild(el("span", "badge good",
+        `${d.count} plans · exact filter, no model`));
+      box.appendChild(badges);
+      const lines = (d.plans || []).map(p =>
+        `${p.plan_name} — ${p.insurer}\n    PED wait: ${p.attributes?.["Pre-existing disease waiting period"] ?? "—"}`
+      ).join("\n");
+      box.appendChild(el("div", "bubble",
+        lines || "No plans match every selected benefit."));
+      push("bot", "Policy Answers", box);
+    } catch (e) { push("err", "Error", String(e)); }
+  };
+
+  /* ---------- mode + input ---------- */
+  function setMode(m) {
+    mode = m;
+    $("modePlan").setAttribute("aria-pressed", String(m === "plan"));
+    $("modeBroad").setAttribute("aria-pressed", String(m === "broad"));
+    $("planWrap").hidden = m !== "plan";
+    $("hint").textContent = m === "plan"
+      ? "Reads all nine sections of the chosen plan — the reliable path."
+      : "Searches all plans, then reads each candidate in full. Needs an embedding key.";
+  }
+  $("modePlan").onclick = () => setMode("plan");
+  $("modeBroad").onclick = () => setMode("broad");
+
+  function sizeBox() {
+    const t = $("q");
+    t.style.height = "auto";
+    t.style.height = Math.min(t.scrollHeight, 180) + "px";
+  }
+  $("q").addEventListener("input", sizeBox);
+  $("q").addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(); }
+  });
+  $("send").onclick = ask;
+
+  /* ---------- go ---------- */
+  setMode("plan");
+  push("sys", "How this works",
+    "“This plan” reads all nine sections of one policy in full, because an " +
+    "insurance answer is composed from clauses that sit far apart — the " +
+    "coverage grant, waiting periods, sub-limits, co-pay and exclusions. " +
+    "Retrieving a few matching chunks reliably drops some of them and produces " +
+    "a fluent, confident, wrong answer. Every claim below is shown with the " +
+    "passage it came from; anything uncited is flagged.");
+  health();
+  loadPlans();
+  $("q").focus();
+})();
+</script>
+</body>
+</html>

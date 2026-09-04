@@ -1,0 +1,9 @@
+.env
+__pycache__/
+*.pyc
+venv/
+data/policies/
+data/*.sqlite3
+
+# nested clone of github.com/beingRajat/insurance-chatbot (separate repo)
+insurance chatbot/

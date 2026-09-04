@@ -1,0 +1,155 @@
+source:
+  url: "https://irdai.gov.in/health-insurance-products"
+
+  # Liferay honours this as the portlet `delta` (items per page).
+  # It MUST be applied to page 1 as well -- see scraper.paginated_url().
+  page_size: 60
+
+  # Safety cap only. The real page count is derived from the portal's
+  # "Showing X - Y of N results" total, not from its default-delta
+  # "Page 1 of 91" label (91 pages is at delta=20; at delta=60 it is 31).
+  max_pages: 200
+
+  navigation_timeout_ms: 60000
+  download_timeout_ms: 120000
+
+selection:
+  max_products: 100
+
+  # ---------------------------------------------------------------------
+  # Insurer identity is resolved from the UIN, NOT from the free-text
+  # "Name of the Insurer" column.
+  #
+  # Rationale: that column contains 266 distinct spellings for ~30
+  # companies, including typos ("Insuarnce", "Insurrance", "Cholamanandlam",
+  # "Royal Sundram", "Helath"). Substring matching on it silently returned
+  # ZERO rows for Star Health, Care Health and ManipalCigna.
+  #
+  # The first three characters of an IRDAI UIN are a stable insurer code.
+  # `codes`   -> authoritative UIN insurer codes (includes predecessor
+  #              entities whose book of business the canonical insurer now
+  #              carries; each match is tagged with the code it came from
+  #              so the provenance stays auditable).
+  # `aliases` -> lowercase substring fallbacks, used only for legacy
+  #              "IRDA/NL-HLT/..." UINs that carry no 3-char code.
+  # ---------------------------------------------------------------------
+  target_insurers:
+    - canonical: "Star Health and Allied Insurance Company Limited"
+      codes: ["SHA"]
+      aliases: ["star health"]
+
+    - canonical: "Care Health Insurance Limited"
+      codes: ["CHI", "RHI"]        # RHI = Religare Health (renamed to Care)
+      aliases: ["care health", "religare"]
+
+    - canonical: "Niva Bupa Health Insurance Company Limited"
+      codes: ["NBH", "MAX"]        # MAX = Max Bupa (renamed to Niva Bupa)
+      aliases: ["niva bupa", "max bupa"]
+
+    - canonical: "Aditya Birla Health Insurance Company Limited"
+      codes: ["ADI"]
+      aliases: ["aditya bir", "aditya bira"]
+
+    - canonical: "ManipalCigna Health Insurance Company Limited"
+      codes: ["MCI", "CTT"]        # CTT = CignaTTK (renamed to ManipalCigna)
+      aliases: ["manipal", "cigna ttk", "cignattk"]
+
+    - canonical: "HDFC ERGO General Insurance Company Limited"
+      codes: ["HDF", "HDH", "APO"] # HDH = HDFC ERGO Health (ex-Apollo Munich)
+      aliases: ["hdfc ergo", "apollo munich"]
+
+    - canonical: "ICICI Lombard General Insurance Company Limited"
+      codes: ["ICI"]
+      aliases: ["icici lombard"]
+
+    - canonical: "Bajaj Allianz General Insurance Company Limited"
+      codes: ["BAJ"]
+      aliases: ["bajaj allianz"]
+
+    - canonical: "Tata AIG General Insurance Company Limited"
+      codes: ["TAT"]
+      aliases: ["tata aig", "tagi"]
+
+    - canonical: "SBI General Insurance Company Limited"
+      codes: ["SBI"]
+      aliases: ["sbi general"]
+
+  # ---------------------------------------------------------------------
+  # Product filtering also keys off the UIN, not the free-text
+  # "Type Of Product" column.
+  #
+  # Rationale: of 1,819 catalogue rows that column is blank on 689 and
+  # says "Revision" on 527. A "Revision" is a re-filed retail product --
+  # exactly what belongs in the corpus -- so the old
+  # accepted=[Individual,Retail,New] whitelist discarded ~85% of the
+  # eligible universe and yielded only 10 products.
+  #
+  # UIN chars 4-5 = product category, chars 6-7 = policy type.
+  # ---------------------------------------------------------------------
+  uin_type:
+    # Individual/retail policy forms. GP=Group, IA/GA/AP=add-on & rider,
+    # OP/DP/BP/SP=other filings -- all excluded.
+    accepted: ["IP"]
+
+  uin_category:
+    # Health indemnity only. Excludes PA (personal accident),
+    # TI/TG (travel), HM/PM (micro-insurance), PC.
+    accepted: ["HL", "HI", "HC", "H", "HLT", "HLLP"]
+
+  # Free-text product_type is used ONLY as a negative signal (it is too
+  # dirty to whitelist on). Any row whose type says rider/add-on is dropped
+  # even if the UIN looks like an individual policy.
+  reject_product_type_patterns:
+    - "rider"
+    - "add on"
+    - "add-on"
+    - "addon"
+
+  # IRDAI's own document filename is an INDEPENDENT signal from the
+  # catalogue row, and it catches rows IRDAI mislabelled. Example:
+  # ADIHLIP18076V011718 is listed with an individual "IP" UIN, but its PDF
+  # is ABHI_GroupActiveSecure_2017-2018.pdf and the document's internal UIN
+  # reads IRDAI/HLT/ABHI/P-G/... ("P-G" = group). The UIN filter cannot see
+  # that because the catalogue's UIN is itself wrong.
+  reject_document_filename_patterns:
+    - "group"
+    - "grp"
+    - "rider"
+    - "addon"
+    - "add-on"
+
+  include_archived: false
+
+  # Keep only the highest UIN version of each product line
+  # (insurer + category + type + serial). 15 lines have >1 version.
+  latest_version_only: true
+
+  # IRDAI issues a NEW UIN serial when a product is re-filed in a later
+  # financial year, so version dedup alone still leaves e.g. the FY21 and
+  # FY22 filings of "Arogya Plus Policy" both in the set. Collapse to the
+  # most recently approved filing per (insurer, product name).
+  dedupe_by_product_name: true
+
+  # Auditable scoring. Deliberately NOT year-dominated: the previous
+  # config added year*2 (~4,044) to weights of 100/30/25/10, so approval
+  # year silently overrode every policy signal. Recency is now a bounded
+  # tie-breaker and true ordering falls through to a PARSED approval date.
+  score:
+    individual_policy: 100
+    health_category: 50
+    latest_version: 20
+    has_document: 10
+    recency_per_year: 2       # (approval_year - recency_baseline) * this
+    recency_baseline: 2013
+
+runtime:
+  concurrency: 2
+  retries: 4
+  headless: true
+  user_agent: "HealthPolicyCorpusBuilder/1.0 (research; contact admin before production deployment)"
+  delay_ms_between_documents: 750
+  delay_ms_between_pages: 400
+
+paths:
+  data_dir: "data"
+  policy_dir: "data/policies"
